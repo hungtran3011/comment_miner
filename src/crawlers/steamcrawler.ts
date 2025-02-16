@@ -1,45 +1,82 @@
 import Axios from 'axios';
 import * as cheerio from 'cheerio';
-
 import ReviewOutputModel from './review_output_model';
 
-interface SteamReview {
-  success: number;
-  html: string;
-  review_score: number;
-  dayrange: number;
-  start_date: number;
-  end_date: number;
-  recommendationids: number[];
-  cursor: string;
-}
+const itemsPerPage = 50;
+const languages = ['english', 'vietnamese'];
 
-export async function getSteamReview(gameId: string): Promise<ReviewOutputModel[]> {
-  const response = await Axios.get(`https://store.steampowered.com/appreviews/${gameId}??use_review_quality=1&cursor=*&day_range=30&start_date=-1&end_date=-1&date_range_type=all&filter=summary&language=all&l=english&review_type=all&purchase_type=all&playtime_filter_min=0&playtime_filter_max=0&playtime_type=all&filter_offtopic_activity=1`)
-  const data: SteamReview = response.data;
-  const $ = cheerio.load(data.html);
-  
-  const reviews: ReviewOutputModel[] = [];
-  
-  // Process each review div
-  $('.review_box').each((_, element) => {
-    const reviewElement = $(element);
-    const state = reviewElement.find('.title').text().trim();
-    const details = reviewElement.find('.content').text().trim();
-    const username = reviewElement.find('.persona_name').text().trim();
-    const item_id = `https://store.steampowered.com/appreviews/${gameId}`;
-    // Check if the text is in English or Vietnamese using regex
-    const isEnglishOrVietnamese = /^[a-zA-Z\s.,!?'"\-0-9\u00C0-\u024F\u0300-\u036f\u0041-\u005A\u0061-\u007A\u00C0-\u00FF\u1EA0-\u1EF9]+$/u.test(details);
-    
-    if (isEnglishOrVietnamese) {
-      reviews.push({
-      item_id: item_id,
-      state: state === "Recommended",
-      details: details,
-      username: username
+export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutputModel[]> {
+  const baseUrl = `https://steamcommunity.com/app/${gameId}/reviews/homecontent/`;
+
+  // Iterate through each language
+  for (const language of languages) {
+    let cursor = '*';
+    let pageIndex = 1;
+    let userreviewsoffset = 0;
+
+    while (true) {
+      const params = new URLSearchParams({
+        userreviewsoffset: userreviewsoffset.toString(),
+        p: pageIndex.toString(),
+        workshopitemspage: pageIndex.toString(),
+        readytouseitemspage: pageIndex.toString(),
+        mtxitemspage: pageIndex.toString(),
+        itemspage: pageIndex.toString(),
+        screenshotspage: pageIndex.toString(),
+        videospage: pageIndex.toString(),
+        artpage: pageIndex.toString(),
+        allguidepage: pageIndex.toString(),
+        webguidepage: pageIndex.toString(),
+        integratedguidepage: pageIndex.toString(),
+        discussionspage: pageIndex.toString(),
+        numperpage: itemsPerPage.toString(),
+        browsefilter: 'toprated',
+        language: language,
+        userreviewscursor: cursor,
       });
-    }
-  });
 
-  return reviews;
+      const response = await Axios.get(`${baseUrl}?${params}`);
+      const data = response.data;
+
+      if (typeof data !== 'string') {
+        throw new Error('Expected HTML content to be a string');
+      }
+
+      const $ = cheerio.load(data);
+      const reviews = $('.apphub_Card')
+        .map((_, element) => {
+          const $element = $(element);
+          const detailsElement = $element.find('.apphub_CardTextContent');
+          let details = detailsElement.clone().children().remove().end().text().trim();
+
+          // Remove truncate pattern
+          details = details.replace(/\n\s+/g, ' ');
+
+          if (!details) {
+            return null;
+          }
+
+          return {
+            item_id: gameId,
+            state: $element.find('.title').text().trim() === "Recommended",
+            details,
+            username: $element.find('.apphub_CardContentAuthorName').text().trim()
+          };
+        })
+        .get()
+        .filter(Boolean) as ReviewOutputModel[];
+
+      yield reviews;
+
+      // Update the cursor and page index for the next page
+      const nextCursor = $('input[name="userreviewscursor"]').val();
+      console.log(nextCursor);
+      if (!nextCursor || nextCursor === cursor) {
+        break;
+      }
+      cursor = nextCursor;
+      userreviewsoffset += itemsPerPage;
+      pageIndex++;
+    }
+  }
 }

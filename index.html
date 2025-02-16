@@ -1,0 +1,52 @@
+<!-- filepath: /c:/Users/hungt/Documents/MLProject/comment_miner/public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steam Reviews</title>
+  <style>
+    #loading {
+      font-size: 20px;
+      color: blue;
+    }
+    #reviews {
+      margin-top: 20px;
+    }
+    .review {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">Loading reviews...</div>
+  <div id="reviews"></div>
+
+  <script>
+    const eventSource = new EventSource('/reviews');
+    const loadingElement = document.getElementById('loading');
+    const reviewsElement = document.getElementById('reviews');
+
+    eventSource.onmessage = function(event) {
+      const reviews = JSON.parse(event.data);
+      reviews.forEach(review => {
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review';
+        reviewElement.innerHTML = `
+          <p><strong>User:</strong> ${review.username}</p>
+          <p><strong>Recommended:</strong> ${review.state}</p>
+          <p>${review.details}</p>
+        `;
+        reviewsElement.appendChild(reviewElement);
+      });
+    };
+
+    eventSource.addEventListener('end', function() {
+      loadingElement.textContent = 'All reviews loaded.';
+      eventSource.close();
+    });
+  </script>
+</body>
+</html>
