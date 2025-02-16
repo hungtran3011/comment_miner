@@ -1,0 +1,25 @@
+{
+  "name": "comment_miner",
+  "version": "1.0.0",
+  "description": "Đào bình luận từ một vài trang web làm dataset =)))",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon --exec ts-node src/index.ts"
+  },
+  "author": "",
+  "license": "GPL-v3",
+  "dependencies": {
+    "@types/cheerio": "^0.22.35",
+    "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
+    "csv": "^6.3.11",
+    "express": "^4.21.2",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}
