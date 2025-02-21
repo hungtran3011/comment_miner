@@ -1,5 +1,7 @@
 import Axios from 'axios';
 import * as cheerio from 'cheerio';
+import { supabaseService } from '../database/supabase';
+
 import ReviewOutputModel from './review_output_model';
 
 const itemsPerPage = 50;
@@ -7,6 +9,7 @@ const languages = ['english', 'vietnamese'];
 
 export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutputModel[]> {
   const baseUrl = `https://steamcommunity.com/app/${gameId}/reviews/homecontent/`;
+  const prefix = "steam";
 
   // Iterate through each language
   for (const language of languages) {
@@ -44,7 +47,7 @@ export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutp
 
       const $ = cheerio.load(data);
       const reviews = $('.apphub_Card')
-        .map((_, element) => {
+        .map(async (_, element) => {
           const $element = $(element);
           const detailsElement = $element.find('.apphub_CardTextContent');
           let details = detailsElement.clone().children().remove().end().text().trim();
@@ -56,12 +59,14 @@ export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutp
             return null;
           }
 
-          return {
-            item_id: gameId,
+          const result =  {
+            id: prefix + gameId,
             state: $element.find('.title').text().trim() === "Recommended",
             details,
             username: $element.find('.apphub_CardContentAuthorName').text().trim()
           };
+          await supabaseService.from('steam').insert(result);
+
         })
         .get()
         .filter(Boolean) as ReviewOutputModel[];

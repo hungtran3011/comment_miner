@@ -23,11 +23,13 @@
 <body>
   <div id="loading">Loading reviews...</div>
   <div id="reviews"></div>
+  <button id="navigateButton">Go to Steam Reviews</button>
 
   <script>
     const eventSource = new EventSource('/reviews');
     const loadingElement = document.getElementById('loading');
     const reviewsElement = document.getElementById('reviews');
+    const navigateButton = document.getElementById('navigateButton');
 
     eventSource.onmessage = function(event) {
       const reviews = JSON.parse(event.data);
@@ -46,6 +48,10 @@
     eventSource.addEventListener('end', function() {
       loadingElement.textContent = 'All reviews loaded.';
       eventSource.close();
+    });
+
+    navigateButton.addEventListener('click', function() {
+      window.location.href = '/steam';
     });
   </script>
 </body>

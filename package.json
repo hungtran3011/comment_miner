@@ -4,19 +4,26 @@
   "description": "Đào bình luận từ một vài trang web làm dataset =)))",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon --exec ts-node src/index.ts"
+    "build": "npx tsc && npx resolve-tspaths",
+    "start": "node dist/index.js",
+    "dev": "npx nodemon -q",
+    "test": "node --import tsx -r tsconfig-paths/register --test test/**/*.test.ts"
   },
-  "author": "",
+  "author": "hungtran3011",
   "license": "GPL-v3",
   "dependencies": {
+    "@supabase/supabase-js": "^2.48.1",
     "@types/cheerio": "^0.22.35",
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
     "csv": "^6.3.11",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "nodemon": "^3.1.9",
+    "supabase": "^2.12.1",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.19.3",
     "typescript": "^5.7.3"
   },
   "devDependencies": {
