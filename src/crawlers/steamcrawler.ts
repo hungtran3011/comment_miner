@@ -224,6 +224,45 @@ class RequestManager {
 const requestManager = new RequestManager();
 
 /**
+ * Helper function to check if text is primarily English
+ * Returns true if the text passes the English language validation
+ */
+function isEnglishText(text: string): boolean {
+  if (!text) return false;
+  
+  // Count characters that are typically found in English text
+  // This includes ASCII letters, numbers, punctuation, and common symbols
+  const englishPattern = /^[\x00-\x7F\s.,?!;:'"()\-–—&@#%*+=/\\<>[\]{}|_~`$^]+$/;
+  
+  // Allow some non-ASCII characters that are common in English text
+  // Such as smart quotes, em-dashes, etc.
+  const allowedNonAscii = /[""''•–—…€£¥©®™]/g;
+  
+  // Replace allowed non-ASCII characters with placeholders for the check
+  const normalizedText = text.replace(allowedNonAscii, 'a');
+  
+  // Split the text into words
+  const words = normalizedText.split(/\s+/);
+  
+  // Count words that contain non-English characters
+  const nonEnglishWords = words.filter(word => !englishPattern.test(word));
+  
+  // Calculate percentage of non-English words
+  const nonEnglishPercentage = (nonEnglishWords.length / words.length) * 100;
+  
+  // If more than 15% of words contain non-English characters, consider it non-English
+  const isEnglish = nonEnglishPercentage <= 15;
+  
+  if (DEBUG_MODE && !isEnglish) {
+    console.log(`[DEBUG] Detected non-English text (${nonEnglishPercentage.toFixed(2)}% non-English words)`);
+    console.log(`[DEBUG] Sample: ${text.substring(0, 100)}...`);
+    console.log(`[DEBUG] Non-English words: ${nonEnglishWords.slice(0, 5).join(', ')}${nonEnglishWords.length > 5 ? '...' : ''}`);
+  }
+  
+  return isEnglish;
+}
+
+/**
  * Get reviews from Steam with user agent and IP rotation
  */
 export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutputModel[]> {
@@ -276,12 +315,38 @@ export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutp
           .map(async (_, element) => {
             const $element = $(element);
             const detailsElement = $element.find('.apphub_CardTextContent');
-            let details = detailsElement.clone().children().remove().end().text().trim();
-
-            // Remove truncate pattern
-            details = details.replace(/\n\s+/g, ' ');
-
-            if (!details) {
+            
+            // First remove the date_posted div completely
+            detailsElement.find('.date_posted').remove();
+            
+            // Get HTML content after removing date_posted
+            let detailsHtml = detailsElement.html() || '';
+            
+            // Remove child elements but preserve their text content
+            const childElements = detailsElement.children();
+            childElements.each((_, child) => {
+              const $child = $(child);
+              // Skip if it's a <br> tag
+              if ($child.is('br')) return;
+              // Replace the element with its text content
+              detailsHtml = detailsHtml.replace($child.toString(), $child.text());
+            });
+            
+            // Replace <br> tags with newlines (handling both <br> and <br/> formats)
+            detailsHtml = detailsHtml.replace(/<br\s*\/?>/gi, '\n');
+            
+            // Load the modified HTML to extract text
+            const tempElement = cheerio.load(`<div>${detailsHtml}</div>`)('div');
+            let details = tempElement.text().trim();
+            
+            // Normalize whitespace but preserve our inserted newlines
+            details = details.replace(/\n\s+/g, '\n').replace(/[ \t]+/g, ' ');
+            
+            // Skip if empty or not English text
+            if (!details || !isEnglishText(details)) {
+              if (DEBUG_MODE && details) {
+                console.log(`[DEBUG] Skipping non-English review`);
+              }
               return null;
             }
 
@@ -291,13 +356,22 @@ export async function* getSteamReview(gameId: string): AsyncGenerator<ReviewOutp
               details,
               username: $element.find('.apphub_CardContentAuthorName').text().trim()
             };
+            
+            // Log when we successfully extract an English review
+            if (DEBUG_MODE) {
+              console.log(`[DEBUG] Extracted English review: ${details.substring(0, 50)}...`);
+            }
+            
             await supabaseService.from('steam').insert(result);
             return result;
           })
           .get()
           .filter(Boolean) as ReviewOutputModel[];
 
-        if (DEBUG_MODE) console.log(`[DEBUG] Found ${reviews.length} reviews on page ${pageIndex}`);
+        if (DEBUG_MODE) {
+          const filteredCount = reviews.length;
+          console.log(`[DEBUG] Found ${filteredCount} English reviews on page ${pageIndex}`);
+        }
         
         yield reviews;
 
