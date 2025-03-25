@@ -3,8 +3,9 @@ import path from 'path';
 // import 'dotenv/config';
 import { getSteamReview } from './crawlers/steamcrawler';
 import { promises as fs } from 'fs';
+import { PlayStoreCrawler } from './crawlers/playcrawler';
 
-console.log(process.env);
+// console.log(process.env);
 
 const app = express();
 const port = 3000;
@@ -23,9 +24,9 @@ app.get('/steam', async (req, res): Promise<void> => {
   try {
     const steamIds = (await fs.readFile('steam-to-crawl.txt', 'utf-8')).split('\n');
     res.write(`data: ${JSON.stringify({ status: 'beginning' })}\n\n`);
-    console.log(steamIds)
+    // console.log(steamIds)
     for (const steamId of steamIds) {
-      console.log("game id: ", steamId);
+      // console.log("game id: ", steamId);
       if (!steamId.trim()) continue;
       res.write(`data: ${JSON.stringify({ status: 'crawling', id: steamId })}\n\n`);
       const reviewGenerator = await getSteamReview(steamId);
@@ -45,6 +46,16 @@ app.get('/steam', async (req, res): Promise<void> => {
     res.end();
   }
 });
+
+app.get("/play-store", async (req, res): Promise<void> => {
+  let crawler = new PlayStoreCrawler();
+  crawler.init().then(() => {
+    crawler.crawlPlayStoreReviews().then((result) => {
+      res.send("Crawling done");
+      crawler.saveReviewsToCsv(result);
+    });
+  });
+})
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);

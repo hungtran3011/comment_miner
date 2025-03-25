@@ -1,5 +1,8 @@
 {
-  "watch": ["src/**/*.ts"],
-  "ext":  "ts",
-  "exec": "tsx --no-warnings -r tsconfig-paths/register src/index.ts"
+  "watch": ["dist"],
+  "ext": "js",
+  "exec": "node dist/index.js",
+  "events": {
+    "start": "tsc -p ."
+  }
 }

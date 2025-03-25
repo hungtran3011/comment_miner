@@ -1,0 +1,3 @@
+com.smilegate.outerplane.stove.google
+com.duolingo
+com.zing.zalo

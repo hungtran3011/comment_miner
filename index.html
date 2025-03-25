@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Steam Reviews</title>
+  <title>Fetch Reviews</title>
   <style>
     #loading {
       font-size: 20px;
@@ -24,6 +24,7 @@
   <div id="loading">Loading reviews...</div>
   <div id="reviews"></div>
   <button id="navigateButton">Go to Steam Reviews</button>
+  <button id="playStoreButton">Go to Play Store Reviews</button>
 
   <script>
     const eventSource = new EventSource('/reviews');
@@ -52,6 +53,10 @@
 
     navigateButton.addEventListener('click', function() {
       window.location.href = '/steam';
+    });
+
+    playStoreButton.addEventListener('click', function() {
+      window.location.href = '/play-store';
     });
   </script>
 </body>

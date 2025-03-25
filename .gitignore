@@ -3,3 +3,8 @@ src/**/*.js
 node_modules/*
 *log*
 .env*
+*.csv
+sample.txt
+dist/
+node_modules/
+screenshots/
